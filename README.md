@@ -1,5 +1,7 @@
 # Chess Coach
 
+[![tests](https://github.com/rubioag/chess-coach/actions/workflows/tests.yml/badge.svg)](https://github.com/rubioag/chess-coach/actions/workflows/tests.yml)
+
 
 A personal chess analysis pipeline. It syncs games from the Chess.com public API, stores
 the raw PGN untouched, parses it into a queryable schema, analyses every move with
@@ -87,8 +89,9 @@ AGGREGATION          per-opening and per-phase statistics
   100% clock coverage. Storage at that volume: 96 MB of database and 15 MB of raw PGN.
   Two items failed and both were genuinely abandoned games containing no moves — correct
   isolation of a bad record, not a bug.
-- **176 tests**, running in about six seconds with no network access and no Stockfish
-  binary required. See the caveat below.
+- **176 tests pass on a clean checkout**, in about six seconds, with no network access,
+  no Stockfish binary and no local configuration required. Run automatically by CI on
+  every push.
 
 **Not verified, and not claimed**
 
@@ -96,11 +99,6 @@ AGGREGATION          per-opening and per-phase statistics
   Stockfish analysis has only been run over a much smaller set. Analysing the full
   archive would take roughly 6.5 hours single-threaded at depth 14, which `todo.md`
   records as deliberately deferred rather than done.
-- **Three of the 176 tests only pass with local configuration.** They read the
-  developer's real, git-ignored config and profile files, so on a clean checkout of this
-  repository 173 pass and 3 fail. That is a defect in those tests, not in the code they
-  cover, and it is why there is no CI badge here yet: a green badge should mean the suite
-  runs anywhere.
 - **No weakness or repertoire claims.** The default profile has 29 analysed games. The
   project's own notes set 30 as a threshold to *inspect*, explicitly not as evidence.
 - Coaching quality. The advisory layer is designed, not built.
@@ -124,7 +122,7 @@ python -m chess_coach status
 ```
 
 ```bash
-pytest    # 176 tests; 3 require local configuration (see above)
+pytest    # 176 tests, no configuration needed
 ```
 
 `config.local.yaml` is git-ignored and holds the only personal data in the project. The
