@@ -13,6 +13,9 @@ from datetime import datetime, timezone
 import pytest
 
 from chess_coach.chesscom import ArchiveResponse
+import shutil
+
+from chess_coach import config as config_module
 from chess_coach.config import ConfigError, DEFAULT_PROFILE, load_config
 from chess_coach.db import ProfileMismatch, init_db, open_db
 from chess_coach.update import update
@@ -295,36 +298,74 @@ def test_an_existing_unstamped_database_is_adopted_not_rejected(config) -> None:
 # Config layering
 # --------------------------------------------------------------------------
 
-def test_unknown_profile_is_rejected_with_the_known_ones_listed() -> None:
+_TEST_CONTACT = "test@example.com"
+
+
+def _identity(username: str) -> str:
+    """A profile file carries one player's identity: the name and the
+    User-Agent chess.com asks for. Same shape as a real profile file."""
+    return f'''username: "{username}"
+http:
+  user_agent: "chess-coach/test (username: {username}; contact: {_TEST_CONTACT})"
+'''
+
+
+@pytest.fixture
+def project(tmp_path, monkeypatch):
+    """A complete, self-contained project root.
+
+    Layering is exercised for real: the repository's own `config.yaml` is the
+    base layer, a generated `config.local.yaml` supplies the default profile's
+    identity, and one extra profile file sits in the profiles directory. Only
+    the two module constants that point at the checkout are redirected, so
+    `load_config` runs its genuine merge and path-derivation logic — it simply
+    reads this directory instead of the developer's own git-ignored files.
+    """
+    shutil.copy(config_module.PROJECT_ROOT / "config.yaml", tmp_path / "config.yaml")
+    (tmp_path / "config.local.yaml").write_text(_identity("DefaultPlayer"), encoding="utf-8")
+
+    profiles = tmp_path / "profiles"
+    profiles.mkdir()
+    (profiles / "second-account.yaml").write_text(_identity("SecondPlayer"), encoding="utf-8")
+
+    monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(config_module, "PROFILES_DIR", profiles)
+    return tmp_path
+
+
+def test_unknown_profile_is_rejected_with_the_known_ones_listed(project) -> None:
     with pytest.raises(ConfigError) as excinfo:
         load_config(profile="nobody-by-that-name")
-    assert "profile not found" in str(excinfo.value)
+    message = str(excinfo.value)
+    assert "profile not found" in message
+    assert "second-account" in message
 
 
-def test_default_profile_keeps_the_original_paths() -> None:
+def test_default_profile_keeps_the_original_paths(project) -> None:
     cfg = load_config()
     assert cfg.profile == DEFAULT_PROFILE
+    assert cfg.username == "DefaultPlayer"
     assert cfg.database.name == "chess_coach.db"
     assert cfg.database.parent.name == "data"
 
 
-def test_a_named_profile_gets_isolated_storage_without_declaring_paths() -> None:
+def test_a_named_profile_gets_isolated_storage_without_declaring_paths(project) -> None:
     default = load_config()
-    other = load_config(profile="mvillen3227")
+    other = load_config(profile="second-account")
 
-    assert other.profile == "mvillen3227"
+    assert other.profile == "second-account"
     assert other.username != default.username
     assert other.database != default.database
     assert other.raw_games_dir != default.raw_games_dir
-    assert "mvillen3227" in other.database.as_posix()
+    assert "second-account" in other.database.as_posix()
     # Analysis settings ARE shared: one engine, one rule set, many players.
     assert other.analysis.thresholds == default.analysis.thresholds
     assert other.stockfish.path == default.stockfish.path
 
 
-def test_username_never_leaks_between_profiles() -> None:
+def test_username_never_leaks_between_profiles(project) -> None:
     default = load_config()
-    other = load_config(profile="mvillen3227")
+    other = load_config(profile="second-account")
     assert default.username not in other.http.user_agent
     assert other.username not in default.http.user_agent
 
