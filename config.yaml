@@ -1,0 +1,43 @@
+username: "[REPLACE_ME]"
+platform: "chess.com"
+
+http:
+  user_agent: "chess-coach/0.1 (username: [REPLACE_ME]; contact: [REPLACE_ME])"
+  timeout_seconds: 30
+  request_delay_seconds: 1.0   # serial requests only; parallel fetches trigger 429
+  max_retries: 5
+
+paths:
+  raw_games_dir: "data/games"
+  database: "data/chess_coach.db"
+
+stockfish:
+  # Absolute path to the UCI binary, or a name resolvable on PATH.
+  # Set the real path in config.local.yaml.
+  path: "stockfish"
+  historical_depth: 14      # historical backfill: throughput over depth
+  priority_depth: 18        # recent / priority games
+  multipv: 1                # V1 is single-PV only; MultiPV 3 triples the cost
+  threads: 1                # single-threaded = reproducible; tune only after correctness
+  hash_mb: 128
+
+analysis:
+  # Evaluations are clamped to +/- this before computing evaluation_loss.
+  # Past ~10 pawns the game is decided and further swings carry no signal;
+  # without the clamp, "+30.0 down to +12.0" would register as a blunder.
+  # Raw uncapped evaluations are still stored per move.
+  eval_cap_cp: 1000
+
+  # Thresholds on evaluation_loss (centipawns, mover perspective, always >= 0,
+  # therefore symmetric between colors). Lower edge is inclusive.
+  thresholds:
+    inaccuracy_cp: 50       # half a pawn - below this, shallow-search noise dominates
+    mistake_cp: 100         # a full pawn handed over
+    blunder_cp: 300         # a minor piece; the expected result genuinely changes
+
+  # Deterministic phase rules. `material` = non-pawn, non-king material for both
+  # sides (Q=9 R=5 B=3 N=3); the starting position scores 62.
+  phase:
+    opening_max_ply: 20        # first 10 full moves
+    opening_min_material: 58   # at most one minor piece traded
+    endgame_max_material: 20   # queens generally off, few pieces left

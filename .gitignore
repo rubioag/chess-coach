@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+data/
+config.local.yaml
+
+# Player profiles hold personal data (usernames, contact strings).
+profiles/*.yaml
+!profiles/*.example.yaml
+
+# Personal study material and generated reports — not part of the codebase.
+*.pdf

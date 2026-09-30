@@ -1,0 +1,13 @@
+# Copy to profiles/<name>.yaml and fill in.
+# Only identity belongs here. Engine settings, thresholds and phase rules are
+# shared and stay in config.yaml.
+
+username: "[REPLACE_ME]"
+
+http:
+  # chess.com asks for tool name + username + contact.
+  user_agent: "chess-coach/0.1 (username: [REPLACE_ME]; contact: [REPLACE_ME])"
+
+# Leave `paths` out. Omitting it gives this profile its own isolated storage at
+# data/profiles/<name>/ , which is what you want. Setting it to the default
+# profile's paths is refused at load time.
